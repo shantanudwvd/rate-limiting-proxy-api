@@ -1,6 +1,7 @@
 import { App, RateLimit } from '../models';
 import { RateLimitStrategy } from '../models/app.model';
 import { RateLimitStatus } from '../types';
+import queueService from './queue.service';
 
 class RateLimitService {
     /**
@@ -239,6 +240,9 @@ class RateLimitService {
         }
 
         await rateLimitRecord.update(updateData);
+
+        // Process any queued requests for this app
+        queueService.processQueue(app.id);
     }
 
     /**

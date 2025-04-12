@@ -3,6 +3,7 @@ import { AuthRequest } from '../types';
 import appService from '../services/app.service';
 import rateLimitService from '../services/rateLimit.service';
 import queueService from '../services/queue.service';
+import logger from '../utils/logger';
 
 /**
  * Middleware to apply rate limiting to proxied requests
@@ -30,6 +31,7 @@ export const applyRateLimit = async (
 
         // Check rate limit
         const rateLimitStatus = await rateLimitService.checkRateLimit(app);
+        logger.info(`Rate limit status for app ${appId}: ${JSON.stringify(rateLimitStatus)}`);
 
         // Add rate limit headers
         res.setHeader('X-RateLimit-Limit', rateLimitStatus.limit.toString());
@@ -48,8 +50,12 @@ export const applyRateLimit = async (
                 const queueResult = await queueService.enqueueRequest(req, res);
 
                 // If request was queued, don't proceed with the middleware chain
+                // Instead, the queue service will handle the response when the request is processed
                 if (queueResult.queued) {
-                    // Response will be handled by the queue service when the request is processed
+                    logger.info(`Request queued for app ${appId}. Will be processed when rate limit resets.`);
+
+                    // Don't call next() here - we'll handle the response directly from the queue
+                    // This request will be resumed from the queue later
                     return;
                 }
 
@@ -61,6 +67,7 @@ export const applyRateLimit = async (
                 return;
             } catch (error) {
                 // If queueing fails, return rate limit error
+                logger.error(`Error queueing request: ${error}`);
                 res.status(429).json({
                     message: 'Too Many Requests',
                     retryAfter: rateLimitStatus.reset - Math.floor(Date.now() / 1000)
@@ -72,6 +79,7 @@ export const applyRateLimit = async (
         // If not rate limited, proceed with the request
         next();
     } catch (error: any) {
+        logger.error(`Error applying rate limit: ${error.message}`);
         res.status(500).json({ message: error.message || 'Error applying rate limit' });
     }
 };

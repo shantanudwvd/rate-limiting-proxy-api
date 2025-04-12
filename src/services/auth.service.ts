@@ -2,7 +2,7 @@ import { User, ApiKey } from '../models';
 import jwt from 'jsonwebtoken';
 import { APP_CONFIG } from '../config/app';
 import { RegisterUserRequest, LoginRequest } from '../types';
-import { v4 as uuidv4 } from 'uuid';
+import { generateApiKey } from '../utils/crypto';
 
 class AuthService {
     /**
@@ -97,13 +97,14 @@ class AuthService {
      */
     async generateApiKey(userId: string): Promise<ApiKey> {
         try {
-            // Create new API key
-            const apiKey = await ApiKey.create({
-                userId: userId,
-                isActive: true
-            });
+            // Explicitly generate a key using your utility function
+            const keyValue = generateApiKey(); // Using your utility function from crypto.ts
 
-            return apiKey;
+            return await ApiKey.create({
+                userId: userId,
+                isActive: true,
+                key: keyValue // Explicitly set the key value
+            });
         } catch (error) {
             throw error;
         }
