@@ -3,6 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { QueuedRequest } from '../types';
 import { APP_CONFIG } from '../config/app';
 import logger from '../utils/logger';
+import appService from "./app.service";
+import rateLimitService from "./rateLimit.service";
+import proxyService from "./proxy.service";
 
 class QueueService {
     private queues: Map<string, QueuedRequest[]> = new Map();
@@ -67,8 +70,10 @@ class QueueService {
                 headers: { ...req.headers },
                 body: req.body,
                 timestamp: Date.now(),
-                resolve: () => {}, // Will be set below
-                reject: () => {}   // Will be set below
+                req: req,     // Store the original request
+                res: res,     // Store the original response
+                resolve: (value: any) => {}, // Will be replaced in Promise constructor
+                reject: (reason: any) => {}  // Will be replaced in Promise constructor
             };
 
             // Create a promise that will be resolved when the request is processed
@@ -123,13 +128,13 @@ class QueueService {
     async processQueue(appId: string): Promise<void> {
         // If already processing, don't start a new processing cycle
         if (this.processing.get(appId)) {
-            console.log(`Queue for app ${appId} is already being processed`);
+            logger.info(`Queue for app ${appId} is already being processed`);
             return;
         }
 
         // Mark queue as processing
         this.processing.set(appId, true);
-        console.log(`Starting to process queue for app ${appId}`);
+        logger.info(`Starting to process queue for app ${appId}`);
 
         // Get the queue
         const queue = this.queues.get(appId);
@@ -137,14 +142,32 @@ class QueueService {
         if (!queue || queue.length === 0) {
             // No more requests to process
             this.processing.set(appId, false);
-            console.log(`No requests in queue for app ${appId}`);
+            logger.info(`No requests in queue for app ${appId}`);
             return;
         }
 
         try {
             // Get the oldest request
             const queuedRequest = queue[0];
-            console.log(`Processing queued request ${queuedRequest.id} for app ${appId}`);
+
+            // *** KEY FIX HERE - Check if we're still rate limited ***
+            const app = await appService.findAppForProxy(appId);
+            if (!app) {
+                logger.error(`App ${appId} not found for queued request`);
+                this.processing.set(appId, false);
+                return;
+            }
+
+            const rateLimitStatus = await rateLimitService.checkRateLimit(app);
+
+            // If still rate limited, don't process yet - wait for the reset
+            if (rateLimitStatus.isLimited) {
+                logger.info(`Still rate limited for app ${appId}, waiting for reset`);
+                this.processing.set(appId, false);
+                return;
+            }
+
+            logger.info(`Processing queued request ${queuedRequest.id} for app ${appId}`);
 
             // Remove request from queue
             queue.shift();
@@ -155,16 +178,30 @@ class QueueService {
                 this.queueTimeouts.delete(queuedRequest.id);
             }
 
+            // *** KEY ADDITION - Recreate the request and forward it to the target API ***
             try {
-                // Safely resolve the promise - check if it's a function first
-                if (typeof queuedRequest.resolve === 'function') {
-                    queuedRequest.resolve({});  // Pass an empty object to avoid undefined errors
-                    console.log(`Resolved queued request ${queuedRequest.id} for app ${appId}`);
-                } else {
-                    console.warn(`Cannot resolve queued request ${queuedRequest.id} - resolve is not a function`);
+                // We need to recreate/simulate the original request
+                // This is simplified - in a real implementation, you'd need to recreate the request
+                // with all the original properties
+                const req = queuedRequest.req; // You'll need to store the original request object
+                const res = queuedRequest.res; // And the original response object
+
+                if (req && res) {
+                    // Forward the request to the proxy
+                    await proxyService.forwardRequest(req, res, app);
+                    logger.info(`Successfully forwarded queued request ${queuedRequest.id}`);
                 }
-            } catch (resolveError) {
-                console.error(`Error resolving queued request: ${resolveError}`);
+
+                // After forwarding (or if we can't), resolve the promise
+                if (typeof queuedRequest.resolve === 'function') {
+                    queuedRequest.resolve({});
+                    logger.info(`Resolved queued request ${queuedRequest.id}`);
+                }
+            } catch (error) {
+                logger.error(`Error processing queued request: ${error}`);
+                if (typeof queuedRequest.reject === 'function') {
+                    queuedRequest.reject(error);
+                }
             }
 
             // Wait a short time before processing next request
@@ -173,7 +210,7 @@ class QueueService {
                 this.processQueue(appId);
             }, 100);
         } catch (error) {
-            console.error(`Error processing queue for app ${appId}: ${error}`);
+            logger.error(`Error processing queue for app ${appId}: ${error}`);
             this.processing.set(appId, false);
         }
     }

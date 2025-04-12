@@ -45,7 +45,9 @@ export interface QueuedRequest {
     headers: Record<string, string | string[] | undefined>;
     body: any;
     timestamp: number;
-    resolve: (value: any) => void;
+    req: Request;   // Store the original request
+    res: any;       // Store the original response (use 'any' to avoid type conflicts)
+    resolve: (value: any) => void;  // Requires a value
     reject: (reason: any) => void;
 }
 
