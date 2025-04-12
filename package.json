@@ -1,0 +1,58 @@
+{
+  "name": "rate-limiting-proxy-api",
+  "version": "1.0.0",
+  "description": "A proxy API service that handles rate limiting for third-party APIs",
+  "main": "dist/app.js",
+  "scripts": {
+    "start": "node dist/app.js",
+    "start:dev": "NODE_ENV=development nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/app.ts",
+    "start:prod": "NODE_ENV=production node dist/app.js",
+    "dev": "NODE_ENV=development nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/app.ts",
+    "build": "tsc",
+    "test": "NODE_ENV=test jest",
+    "test:watch": "NODE_ENV=test jest --watch",
+    "test:coverage": "NODE_ENV=test jest --coverage"
+  },
+  "keywords": [
+    "api",
+    "proxy",
+    "rate-limiting",
+    "express",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.4.0",
+    "bcrypt": "^5.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.0.0",
+    "http-proxy-middleware": "^2.0.6",
+    "jsonwebtoken": "^9.0.1",
+    "pg": "^8.11.1",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.32.1",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.0",
+    "@types/cors": "^2.8.13",
+    "@types/express": "^4.17.17",
+    "@types/helmet": "^4.0.0",
+    "@types/jest": "^29.5.14",
+    "@types/jsonwebtoken": "^9.0.2",
+    "@types/node": "^20.4.2",
+    "@types/uuid": "^9.0.2",
+    "@types/winston": "^2.4.4",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.1",
+    "sequelize-mock": "^0.10.2",
+    "ts-jest": "^29.3.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.8.3",
+    "winston": "^3.17.0"
+  }
+}

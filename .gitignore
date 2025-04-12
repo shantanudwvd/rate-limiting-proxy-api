@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# TypeScript compiled output
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env*.local
+
+# IDE and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Sequelize-related files
+.sequelizerc
+config/database.json
+
+# Project-specific
+# Add any custom project-specific files or directories to exclude
